@@ -1,95 +1,128 @@
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.Scanner;
 
-class LRUCache<K, V> extends LinkedHashMap<K, V> {
-    private final int capacity;
+class LRUCache {
+    class Node {
+        int key, value;
+        Node prev, next;
+
+        Node(int key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+    private int capacity;
+    private HashMap<Integer, Node> map;
+    private Node head, tail;
 
     public LRUCache(int capacity) {
-        super(capacity, 0.75f, true); // access order
-        // This is calling the constructor of the superclass LinkedHashMap
-        // public LinkedHashMap(int initialCapacity, float loadFactor, boolean
-        // accessOrder)
         this.capacity = capacity;
+        this.map = new HashMap<>();
+
+        // Dummy head and tail
+        head = new Node(0, 0);
+        tail = new Node(0, 0);
+
+        head.next = tail;
+        tail.prev = head;
     }
 
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-        return size() > capacity;
-    }
-    // Every time you add a new entry using .put(), Java internally checks this
-    // method.
-    // If it returns true, the eldest (oldest) entry is removed from the map
-    // automatically.
-    // If it returns false, nothing is removed.
+    public int get(int key) {
+        if (!map.containsKey(key)) return -1;
 
-    public V getValue(K key) {
-        return super.getOrDefault(key, null);
+        Node node = map.get(key);
+        remove(node);
+        insertToFront(node);
+        return node.value;
     }
-    // V is type parameter - placeholder for Value
 
-    public void putValue(K key, V value) {
-        super.put(key, value);
+    public void put(int key, int value) {
+        if (map.containsKey(key)) {
+            remove(map.get(key));
+        }
+
+        if (map.size() == capacity) {
+            // Remove least recently used node
+            Node lru = tail.prev;
+            remove(lru);
+        }
+
+        Node newNode = new Node(key, value);
+        insertToFront(newNode);
+    }
+
+    // Remove node from linked list and hashmap
+    private void remove(Node node) {
+        map.remove(node.key);
+        node.prev.next = node.next;
+        node.next.prev = node.prev;
+    }
+
+    // Insert node right after head (most recently used)
+    private void insertToFront(Node node) {
+        map.put(node.key, node);
+
+        node.next = head.next;
+        node.prev = head;
+
+        head.next.prev = node;
+        head.next = node;
     }
 
     public void printCache() {
-        System.out.println("Cache (LRU order): " + this);
+        Node curr = head.next;
+        System.out.print("Cache (MRU → LRU): ");
+        while (curr != tail) {
+            System.out.print("(" + curr.key + "=" + curr.value + ") ");
+            curr = curr.next;
+        }
+        System.out.println();
     }
 }
 
 public class LRUCacheDemo {
     public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
         System.out.print("Enter cache capacity: ");
-        int capacity = sc.nextInt();
+        int capacity = scanner.nextInt();
+        LRUCache cache = new LRUCache(capacity);
+        int choice;
 
-        LRUCache<Integer, String> cache = new LRUCache<>(capacity);
-        sc.nextLine(); // consume newline
-
-        while (true) {
-            System.out.println("\n======================");
-            System.out.println("Choose an action:");
-            System.out.println("1. put  - Add/Update key");
-            System.out.println("2. get  - Retrieve key");
-            System.out.println("3. stop - Exit");
-            System.out.print("Your choice: ");
-            String choice = sc.nextLine().trim().toLowerCase();
-
+        do{
+            System.out.print("Choose an operation: 1) Put 2) Get 3) Print Cache 4) Exit: ");
+            choice = scanner.nextInt();
             switch (choice) {
-                case "put":
-                    System.out.print("Enter key (integer): ");
-                    int key = sc.nextInt();
-                    sc.nextLine(); // consume newline
-
-                    System.out.print("Enter value (string): ");
-                    String value = sc.nextLine();
-
-                    cache.putValue(key, value);
-                    System.out.println("Entry added.")
-                    cache.printCache();
+                case 1:
+                    System.out.print("Enter key: ");
+                    int key = scanner.nextInt();
+                    System.out.print("Enter value: ");
+                    int value = scanner.nextInt();
+                    cache.put(key, value);
+                    System.out.println("Inserted (" + key + "=" + value + ")");
                     break;
-
-                case "get":
-                    System.out.print("Enter key to retrieve: ");
-                    int getKey = sc.nextInt();
-                    sc.nextLine(); // consume newline
-
-                    String result = cache.getValue(getKey);
-                    if (result != null) {
-                        System.out.println("Value: " + result);
+                case 2:
+                    System.out.print("Enter key to get: ");
+                    key = scanner.nextInt();
+                    int result = cache.get(key);
+                    if (result != -1) {
+                        System.out.println("Value for key " + key + ": " + result);
                     } else {
-                        System.out.println("Key not found.");
+                        System.out.println("Key " + key + " not found.");
                     }
+                    break;
+                case 3:
                     cache.printCache();
                     break;
-
-                case "stop":
-                    System.out.println("Exiting program.");
+                case 4:
+                    System.out.println("Exiting...");
                     return;
-
                 default:
-                    System.out.println("Invalid choice. Try 'put', 'get', or 'stop'.");
+                    System.out.println("Invalid choice. Please try again.");
             }
-        }
+        } while(choice != 4);
+
+        scanner.close();
     }
 }
+
